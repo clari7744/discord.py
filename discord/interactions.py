@@ -407,6 +407,15 @@ class Interaction(Generic[ClientT]):
         """
         return self.user.id == self._integration_owners.get(1)
 
+    async def send(self, content=None, **kwargs):
+        """|coro|
+        Shortcut to response.send_message or followup.send depending on if the response is done or not."""
+        if not self.response.is_done():
+            s = self.response.send_message
+        else:
+            s = self.followup.send
+        return await s(content, **kwargs)
+
     async def original_response(self) -> InteractionMessage:
         """|coro|
 
@@ -1076,7 +1085,9 @@ class InteractionResponse(Generic[ClientT]):
         if translator is not None:
             user_locale = self._parent.locale
             payload: Dict[str, Any] = {
-                'choices': [await option.get_translated_payload_for_locale(translator, user_locale) for option in choices],
+                'choices': [
+                    await option.get_translated_payload_for_locale(translator, user_locale) for option in choices
+                ],
             }
         else:
             payload: Dict[str, Any] = {
