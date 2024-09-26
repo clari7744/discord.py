@@ -1128,7 +1128,9 @@ class CommandTree(Generic[ClientT]):
             if guild is None:
                 data = await self._http.bulk_upsert_global_commands(self.client.application_id, payload=payload)
             else:
-                data = await self._http.bulk_upsert_guild_commands(self.client.application_id, guild.id, payload=payload)
+                data = await self._http.bulk_upsert_guild_commands(
+                    self.client.application_id, guild.id, payload=payload
+                )
         except HTTPException as e:
             if e.status == 400 and e.code == 50035:
                 raise CommandSyncFailure(e, commands) from None
@@ -1307,6 +1309,7 @@ class CommandTree(Generic[ClientT]):
             return
 
         try:
+            self.client.dispatch('app_command', interaction, command)
             await command._invoke_with_namespace(interaction, namespace)
         except AppCommandError as e:
             interaction.command_failed = True
