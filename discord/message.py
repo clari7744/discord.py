@@ -57,7 +57,7 @@ from .member import Member
 from .flags import MessageFlags, AttachmentFlags
 from .file import File
 from .utils import escape_mentions, MISSING, deprecated
-from .http import handle_message_parameters
+from .http import handle_message_parameters, MultipartParameters
 from .guild import Guild
 from .mixins import Hashable
 from .sticker import StickerItem, GuildSticker
@@ -91,6 +91,7 @@ if TYPE_CHECKING:
     from .types.gateway import MessageReactionRemoveEvent, MessageUpdateEvent
     from .abc import Snowflake
     from .abc import GuildChannel, MessageableChannel
+    from .abc import Messageable
     from .components import ActionRow, ActionRowChildComponentType
     from .state import ConnectionState
     from .mentions import AllowedMentions
@@ -494,7 +495,9 @@ class MessageReference:
 
     __slots__ = ('message_id', 'channel_id', 'guild_id', 'fail_if_not_exists', 'resolved', '_state')
 
-    def __init__(self, *, message_id: int, channel_id: int, guild_id: Optional[int] = None, fail_if_not_exists: bool = True):
+    def __init__(
+        self, *, message_id: int, channel_id: int, guild_id: Optional[int] = None, fail_if_not_exists: bool = True
+    ):
         self._state: Optional[ConnectionState] = None
         self.resolved: Optional[Union[Message, DeletedReferencedMessage]] = None
         self.message_id: Optional[int] = message_id
@@ -681,7 +684,9 @@ class MessageInteractionMetadata(Hashable):
         '_guild',
     )
 
-    def __init__(self, *, state: ConnectionState, guild: Optional[Guild], data: MessageInteractionMetadataPayload) -> None:
+    def __init__(
+        self, *, state: ConnectionState, guild: Optional[Guild], data: MessageInteractionMetadataPayload
+    ) -> None:
         self._guild: Optional[Guild] = guild
         self._state: ConnectionState = state
 
@@ -1016,8 +1021,7 @@ class PartialMessage(Hashable):
         delete_after: Optional[float] = ...,
         allowed_mentions: Optional[AllowedMentions] = ...,
         view: Optional[View] = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def edit(
@@ -1029,8 +1033,7 @@ class PartialMessage(Hashable):
         delete_after: Optional[float] = ...,
         allowed_mentions: Optional[AllowedMentions] = ...,
         view: Optional[View] = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     async def edit(
         self,
@@ -1409,7 +1412,9 @@ class PartialMessage(Hashable):
         if self.guild is None:
             raise ValueError('This message does not have guild info attached.')
 
-        default_auto_archive_duration: ThreadArchiveDuration = getattr(self.channel, 'default_auto_archive_duration', 1440)
+        default_auto_archive_duration: ThreadArchiveDuration = getattr(
+            self.channel, 'default_auto_archive_duration', 1440
+        )
         data = await self._state.http.start_thread_with_message(
             self.channel.id,
             self.id,
@@ -1472,8 +1477,7 @@ class PartialMessage(Hashable):
         suppress_embeds: bool = ...,
         silent: bool = ...,
         poll: Poll = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def reply(
@@ -1493,8 +1497,7 @@ class PartialMessage(Hashable):
         suppress_embeds: bool = ...,
         silent: bool = ...,
         poll: Poll = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def reply(
@@ -1514,8 +1517,7 @@ class PartialMessage(Hashable):
         suppress_embeds: bool = ...,
         silent: bool = ...,
         poll: Poll = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def reply(
@@ -1535,8 +1537,7 @@ class PartialMessage(Hashable):
         suppress_embeds: bool = ...,
         silent: bool = ...,
         poll: Poll = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     async def reply(self, content: Optional[str] = None, **kwargs: Any) -> Message:
         """|coro|
@@ -1886,7 +1887,9 @@ class Message(PartialMessage, Hashable):
         except KeyError:
             pass
         else:
-            self.interaction_metadata = MessageInteractionMetadata(state=state, guild=self.guild, data=interaction_metadata)
+            self.interaction_metadata = MessageInteractionMetadata(
+                state=state, guild=self.guild, data=interaction_metadata
+            )
 
         try:
             ref = data['message_reference']
@@ -1937,9 +1940,7 @@ class Message(PartialMessage, Hashable):
 
     def __repr__(self) -> str:
         name = self.__class__.__name__
-        return (
-            f'<{name} id={self.id} channel={self.channel!r} type={self.type!r} author={self.author!r} flags={self.flags!r}>'
-        )
+        return f'<{name} id={self.id} channel={self.channel!r} type={self.type!r} author={self.author!r} flags={self.flags!r}>'
 
     def _try_patch(self, data, key, transform=None) -> None:
         try:
@@ -2348,9 +2349,7 @@ class Message(PartialMessage, Hashable):
                 return f'{self.author.name} just boosted the server **{self.content}** times! {self.guild} has achieved **Level 3!**'
 
         if self.type is MessageType.channel_follow_add:
-            return (
-                f'{self.author.name} has added {self.content} to this channel. Its most important updates will show up here.'
-            )
+            return f'{self.author.name} has added {self.content} to this channel. Its most important updates will show up here.'
 
         if self.type is MessageType.guild_stream:
             # the author will be a Member
@@ -2433,8 +2432,7 @@ class Message(PartialMessage, Hashable):
         delete_after: Optional[float] = ...,
         allowed_mentions: Optional[AllowedMentions] = ...,
         view: Optional[View] = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @overload
     async def edit(
@@ -2447,8 +2445,7 @@ class Message(PartialMessage, Hashable):
         delete_after: Optional[float] = ...,
         allowed_mentions: Optional[AllowedMentions] = ...,
         view: Optional[View] = ...,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     async def edit(
         self,
@@ -2624,3 +2621,35 @@ class Message(PartialMessage, Hashable):
             The newly edited message.
         """
         return await self.edit(attachments=[a for a in self.attachments if a not in attachments])
+
+    async def forward(self, dest: Messageable) -> Message:
+        channel = getattr(dest, 'channel', dest)
+        data = await self._state.http.get_message(self.channel.id, self.id)
+        valid = (
+            # 'allowed_mentions',
+            'components',
+            'content',
+            'embeds',
+            'flags',
+            'message_reference',
+            'nonce',
+            'sticker_items',
+            'tts',
+        )
+        ks = lambda k: {'sticker_items': 'stickers'}.get(k, k)  # noqa: E731
+        vs = lambda k, v: list(map(lambda s: s.get('id'), v)) if k == 'sticker_items' else v  # noqa: E731
+        fields = {ks(k): vs(k, v) for k, v in data.items() if k in valid}
+        if fields.get('content', "") == "":
+            fields['content'] = self.system_content
+        if channel != self.channel:
+            fields.pop('message_reference', None)
+        return Message(
+            data=await self._state.http.send_message(
+                channel.id,
+                params=MultipartParameters(
+                    payload=fields, files=[a.to_file() for a in self.attachments], multipart=fields
+                ),
+            ),
+            state=self._state,
+            channel=channel,
+        )
