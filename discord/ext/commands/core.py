@@ -438,6 +438,8 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
         self.callback = func
         self.enabled: bool = kwargs.get('enabled', True)
 
+        self.flags = kwargs.get("flags", getattr(func, "__flags__", None))
+
         help_doc = kwargs.get('help')
         if help_doc is not None:
             help_doc = inspect.cleandoc(help_doc)
@@ -1339,7 +1341,7 @@ class GroupMixin(Generic[CogT]):
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        case_insensitive = kwargs.get('case_insensitive', False)
+        case_insensitive = kwargs.get('case_insensitive', True)
         self.all_commands: Dict[str, Command[CogT, ..., Any]] = _CaseInsensitiveDict() if case_insensitive else {}
         self.case_insensitive: bool = case_insensitive
         super().__init__(*args, **kwargs)

@@ -1294,6 +1294,7 @@ class CommandTree(Generic[ClientT]):
             return
 
         try:
+            self.client.dispatch('app_command', interaction, command)
             await command._invoke_with_namespace(interaction, namespace)
         except AppCommandError as e:
             interaction.command_failed = True
