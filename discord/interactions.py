@@ -425,6 +425,15 @@ class Interaction(Generic[ClientT]):
         """
         return self.user.id == self._integration_owners.get(1)
 
+    async def send(self, content: str = MISSING, **kwargs):
+        """|coro|
+        Shortcut to response.send_message or followup.send depending on if the response is done or not."""
+        if not self.response.is_done():
+            s = self.response.send_message
+        else:
+            s = self.followup.send
+        return await s(content, **kwargs)
+
     async def original_response(self) -> InteractionMessage:
         """|coro|
 
