@@ -58,7 +58,7 @@ from .member import Member
 from .flags import MessageFlags, AttachmentFlags
 from .file import File
 from .utils import escape_mentions, MISSING, deprecated
-from .http import handle_message_parameters
+from .http import handle_message_parameters, MultipartParameters
 from .guild import Guild
 from .mixins import Hashable
 from .sticker import StickerItem, GuildSticker
@@ -96,6 +96,7 @@ if TYPE_CHECKING:
     from .types.gateway import MessageReactionRemoveEvent, MessageUpdateEvent
     from .abc import Snowflake
     from .abc import GuildChannel, MessageableChannel
+    from .abc import Messageable
     from .components import MessageComponentType
     from .state import ConnectionState
     from .mentions import AllowedMentions
@@ -3050,3 +3051,35 @@ class Message(PartialMessage, Hashable):
             The newly edited message.
         """
         return await self.edit(attachments=[a for a in self.attachments if a not in attachments])
+
+    async def forward_raw(self, dest: Messageable) -> Message:
+        channel = getattr(dest, 'channel', dest)
+        data = await self._state.http.get_message(self.channel.id, self.id)
+        valid = (
+            # 'allowed_mentions',
+            'components',
+            'content',
+            'embeds',
+            'flags',
+            'message_reference',
+            'nonce',
+            'sticker_items',
+            'tts',
+        )
+        ks = lambda k: {'sticker_items': 'stickers'}.get(k, k)  # noqa: E731
+        vs = lambda k, v: list(map(lambda s: s.get('id'), v)) if k == 'sticker_items' else v  # noqa: E731
+        fields = {ks(k): vs(k, v) for k, v in data.items() if k in valid}
+        if fields.get('content', "") == "":
+            fields['content'] = self.system_content
+        if channel != self.channel:
+            fields.pop('message_reference', None)
+        return Message(
+            data=await self._state.http.send_message(
+                channel.id,
+                params=MultipartParameters(
+                    payload=fields, files=[await a.to_file() for a in self.attachments], multipart=fields
+                ),
+            ),
+            state=self._state,
+            channel=channel,
+        )
