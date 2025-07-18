@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import collections.abc
+import datetime
 import inspect
 import importlib.util
 import sys
@@ -55,7 +56,7 @@ from discord import app_commands
 from discord.app_commands.tree import _retrieve_guild_ids
 from discord.utils import MISSING, _is_submodule
 
-from .core import GroupMixin
+from .core import GroupMixin, _CaseInsensitiveDict
 from .view import StringView
 from .context import Context
 from . import errors
@@ -192,7 +193,7 @@ class BotBase(GroupMixin[None]):
         if allowed_installs is not MISSING:
             self.__tree.allowed_installs = allowed_installs
 
-        self.__cogs: Dict[str, Cog] = {}
+        self.__cogs: Dict[str, Cog] = _CaseInsensitiveDict()
         self.__extensions: Dict[str, types.ModuleType] = {}
         self._checks: List[UserCheck] = []
         self._check_once: List[UserCheck] = []
@@ -202,7 +203,7 @@ class BotBase(GroupMixin[None]):
         self.description: str = inspect.cleandoc(description) if description else ''
         self.owner_id: Optional[int] = options.get('owner_id')
         self.owner_ids: Optional[Collection[int]] = options.get('owner_ids', set())
-        self.strip_after_prefix: bool = options.get('strip_after_prefix', False)
+        self.strip_after_prefix: bool = options.get('strip_after_prefix', True)
 
         if self.owner_id and self.owner_ids:
             raise TypeError('Both owner_id and owner_ids are set.')
@@ -214,6 +215,8 @@ class BotBase(GroupMixin[None]):
             self.help_command = DefaultHelpCommand()
         else:
             self.help_command = help_command
+        self.start_time = datetime.datetime.now().astimezone()
+        self.utc_start_time = discord.utils.utcnow()
 
     # internal helpers
 
@@ -1419,6 +1422,11 @@ class BotBase(GroupMixin[None]):
 
     async def on_message(self, message: Message, /) -> None:
         await self.process_commands(message)
+
+    @classmethod
+    def inspect(cls, obj, lines: bool = False):
+        _lines = inspect.getsourcelines(obj)
+        return _lines if lines else "".join(_lines[0])
 
 
 class Bot(BotBase, discord.Client):

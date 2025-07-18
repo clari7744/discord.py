@@ -540,6 +540,23 @@ class Choice(Generic[ChoiceT]):
         return base
 
 
+class Choices:
+    """
+    Wrapper class to make app_commands.choices more concise when using a list of choices
+    Alternative to @app_commands.choices(fruits=[
+            Choice(name='apple', value=1),
+            Choice(name='banana', value=2),
+            Choice(name='cherry', value=3),
+        ])
+    Usage:
+        @app_commands.choices(fruits=Choices(apple=1, banana=2, cherry=3))
+    """
+
+    def __new__(cls, choicedict: dict = {}, **choices):
+        choices.update(choicedict)
+        return [Choice(name=n, value=v) for n, v in choices.items()]
+
+
 class AppCommandChannel(Hashable):
     """Represents an application command partially resolved channel object.
 
