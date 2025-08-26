@@ -431,6 +431,7 @@ class Interaction(Generic[ClientT]):
         if not self.response.is_done():
             s = self.response.send_message
         else:
+            kwargs.pop('delete_after', None)
             s = self.followup.send
         return await s(content, **kwargs)
 
